@@ -1,0 +1,21 @@
+# Local / secrets / bulky
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.wav
+*.mp4
+
+# Workshop recordings & local transcription artifacts (not for remote)
+workshop/
+
+# Per-challenge runtime (keep placeholders only)
+notes/*/
+!notes/.gitkeep
+challenges/*/
+!challenges/README.md
+
+# Optional local env
+.env
+.env.*
+!.env.example

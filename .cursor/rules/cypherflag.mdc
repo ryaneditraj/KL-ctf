@@ -1,0 +1,27 @@
+---
+description: CypherFlag always-on — autonomous CTF for zero-knowledge operator
+alwaysApply: true
+---
+
+# CypherFlag
+
+Before answering casually, check `START_HERE.md`.
+
+## Operator may be Aaliya (zero knowledge)
+- You run all commands. She only pastes challenges and clicks Allow.
+- Follow `AALIYA.md` § Agent duties.
+
+## First run
+`bash scripts/first-run.sh`
+
+## On challenge text
+1. Save to `challenges/<slug>/README.md`
+2. `python3 tools/cypherflag.py autosolve --slug <slug> --text-file challenges/<slug>/README.md`
+3. Continue with `.cursor/skills/ctf-*` until `FLAG:`
+4. `python3 tools/cypherflag.py save-flag <slug> '<flag>'`
+
+## Tools
+Prefer `tools/cypherflag.py` (dig/nmap/curl/recon/web-hunt/autosolve).
+
+## Never
+Ask her to use the terminal. Mix challenges in one chat. Attack out of scope. Give up after one try.

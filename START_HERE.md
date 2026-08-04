@@ -1,50 +1,44 @@
-# ⚠️ AI AGENTS: READ THIS FIRST — THEN ACT
+# ⚠️ AI AGENTS — KL-ctf (for Aaliya)
 
-You are in **KL-ctf** (**CypherFlag**). The human likely **only opened this folder in Cursor** and may be **Aaliya** (zero technical knowledge).
+**Operator:** Aaliya only (zero technical knowledge).  
+**Runtime:** **Agentic** on **Cursor Agent** (or Claude Code) — LLM + tools + loop. This repo = harness.  
+**Competition:** cybersecurity CTF / agent hackathon — most flags + explainable harness.
 
-## On any first message (including `hi`)
+## First message (even `hi`)
 
-1. Read `AALIYA.md`, `EXPLAIN.md`, `OPEN_IN_CURSOR.md`
-2. Run `bash scripts/first-run.sh`
-3. Teach the 2-minute Part B from `AALIYA.md` (unless she says skip)
-4. Say: “Paste a challenge when ready. Click **Allow** if asked.”
+1. `bash scripts/first-run.sh`  
+2. If Mac and scanners missing: `bash scripts/install-mac-scanners.sh`  
+3. `python3 tools/cypherflag.py scanners` — install until ffuf/sqlmap/nuclei OK when possible  
+4. Teach `AALIYA.md` Part B briefly  
+5. “Paste a challenge. Click **Allow** if asked.”
 
-## On challenge text / URL / IP / “solve”
+Aaliya must **Approve** Homebrew installs if macOS prompts — that is her only job besides pasting challenges.
 
-**Autonomous mode.** Do not ask her for a plan.
+## Challenge paste → autonomous solve
 
 ```bash
-bash scripts/first-run.sh   # if needed
-# save paste to challenges/<slug>/README.md first
+# save text to challenges/<slug>/README.md first
 python3 tools/cypherflag.py autosolve --slug <slug> --text-file challenges/<slug>/README.md
-# or
-python3 tools/cypherflag.py autosolve --slug <slug> --target <url-or-ip>
+python3 tools/cypherflag.py web-hunt <url>      # includes ffuf+nuclei when installed
+python3 tools/cypherflag.py ffuf 'http://HOST/FUZZ'
+python3 tools/cypherflag.py sqlmap 'http://HOST/path?id=1'
+python3 tools/cypherflag.py nuclei 'http://HOST/'
 ```
 
-Continue with `.cursor/skills/ctf-*`, `web-hunt`, `recon`, `peel`, payloads until:
+Continue with `.cursor/skills/ctf-*` until:
 
 ```
-FLAG: <exact_flag>
+FLAG: <exact>
 ```
 
 ```bash
-python3 tools/cypherflag.py save-flag <slug> '<flag>'
+python3 tools/cypherflag.py save-flag <slug> '<exact>'
 ```
 
-Tell her only to submit that flag and say **next**.
+## Why this is agentic
 
-## Explain / judges
-
-Use **exact** wording from `EXPLAIN.md`.
-
-## Contract
-
-Full rules: `AGENTS.md`. Formula: **LLM + Tools (dig/nmap/curl) + Loop + Harness**.
+Chatbots only reply. **You** decide next actions, call scanners/tools, read results, loop until flag — inside Cursor’s agent loop. That matches the workshop: `Agent = LLM + Tools + Loop + Context` + harness.
 
 ## Never
 
-- Ask her to use Terminal  
-- Dump jargon  
-- Attack out-of-scope  
-- Stop after one failed idea  
-- Wait for “perfect” info before trying  
+Ask Aaliya to open Terminal, write code, or pick exploits. In-scope CTF only.

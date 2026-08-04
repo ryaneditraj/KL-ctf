@@ -1,64 +1,54 @@
-# Aaliya — you only open this in Cursor
+# Aaliya — only operator for KL-ctf
 
-**Main page for you:** [`OPEN_IN_CURSOR.md`](OPEN_IN_CURSOR.md)  
-**What to say to judges:** [`EXPLAIN.md`](EXPLAIN.md)
+**You:** Aaliya (non-technical)  
+**System:** **Agentic** AI on **Cursor** + this harness repo  
+**Your jobs:** open folder → Allow installs → paste challenges → Allow tools → submit `FLAG:`
 
-This file is also for the **AI** (must follow Part C).
+See also: [`OPEN_IN_CURSOR.md`](OPEN_IN_CURSOR.md) · [`EXPLAIN.md`](EXPLAIN.md)
 
 ---
 
-## Part A — Competition day (only this)
+## Part A — Day of
 
-1. Open **this folder** in Cursor  
-2. Open **Agent** chat → type `hi` (or the message below)  
-3. Open CTFd in a browser  
-4. For each challenge: **paste → Allow → copy `FLAG:` → submit**  
+1. Open this folder in **Cursor** → **Agent**  
+2. Send:
+
+```
+I am Aaliya. Boot KL-ctf. Install scanners on my Mac if needed. Teach me the 2-minute version, then wait for challenges.
+```
+
+3. If Mac asks password / Allow for Homebrew → **Allow** (installs ffuf, sqlmap, nuclei, nmap, …)  
+4. Paste each CTFd challenge → **Allow** → copy `FLAG:` → submit  
 5. Stuck 5 min → screenshot Ryan  
 
-```
-I am Aaliya. Boot KL-ctf. Teach me the 2-minute version from AALIYA.md, then wait for challenges.
-```
-
-Do **not** use Terminal. Do **not** install anything. Do **not** edit code.
+No Terminal. No coding.
 
 ---
 
-## Part B — 2-minute learn (AI teaches; you repeat)
+## Part B — 2-minute learn
 
-1. **CTF** = puzzle game for points  
-2. **Flag** = secret string you submit  
-3. **Agent** = AI that tries steps alone until it finds the flag  
+1. **CTF** = puzzles for points  
+2. **Flag** = secret string to submit  
+3. **Agentic** = AI that runs tools in a loop by itself (not just chat)  
 4. **Your job** = paste → Allow → submit  
-5. **Win** = most flags (+ explain harness if asked — use EXPLAIN.md)
+5. **Win** = most flags (+ explain with EXPLAIN.md)
 
 ---
 
-## Part C — Agent duties (AI: obey)
+## Part C — AI duties (agents must obey)
 
-### Drop-in
-Any first message (`hi` included) → run `bash scripts/first-run.sh`, teach Part B briefly, wait for challenges.
-
-### Tone
-Short plain English. Never ask her to run commands. You run them.
-
-### Challenge paste
-1. “Working — click Allow if asked.”  
-2. Save `challenges/<slug>/README.md`  
-3. `python3 tools/cypherflag.py autosolve ...` then skills until flag  
-4. Show `FLAG: ...` + “Submit on the site. Say next.”
-
-### Judges
-Use **exact** scripts in `EXPLAIN.md`. Offer `JUDGE-ONEPAGER.md`.
-
-### Blocked
-≥3 techniques, then “Screenshot Ryan.”
+- Operator is **always Aaliya** unless Ryan is clearly driving  
+- First boot: `first-run.sh` + `install-mac-scanners.sh` on Darwin  
+- Challenge → autosolve + **ffuf/sqlmap/nuclei** + skills until flag  
+- Speaks plain English; never asks her to run commands  
+- Judges → exact `EXPLAIN.md` text  
 
 ---
 
 ## Part D — Checklist
 
-- [ ] Folder opens in Cursor  
-- [ ] Said hi / boot message; AI ready  
-- [ ] CTFd login works  
-- [ ] Memorized 15-second pitch in EXPLAIN.md  
-- [ ] Ryan’s number saved  
+- [ ] Cursor opens this repo  
+- [ ] Boot message sent; scanners install Allowed  
+- [ ] CTFd login  
+- [ ] 15-second pitch memorized  
+- [ ] Ryan’s number  

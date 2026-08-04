@@ -12,15 +12,13 @@ Aligned to the UCSI / Cypherly workshop stack: `Agent = LLM + Tools + Loop + Con
 
 | Need (from workshop) | Implementation |
 |---|---|
-| dig / nmap / curl | `tools/cypherflag.py` (`dig`, `nmap`, `curl`, `recon`) |
-| WHOIS / reputation-style enrichment | `whois` + `http` fingerprint (paths/headers/flags) |
-| Agent loop | Cursor Agent + rules in `AGENTS.md` |
+| dig / nmap / curl | `tools/cypherflag.py` |
+| Real scanners | `ffuf`, `sqlmap`, `nuclei` (+ `install-mac-scanners.sh` for Aaliya’s Mac) |
+| WHOIS / HTTP enrichment | `whois` + `http` / `web-hunt` |
+| Agent loop (agentic) | **Cursor Agent** runtime + `AGENTS.md` |
 | Skills | `.cursor/skills/ctf-*` |
 | Memory | `notes/`, `flags/FOUND.md` |
-| Payloads / wide bugs | `tools/payloads/` |
-| Operator UX | `AALIYA.md` |
-| Live ops | `BATTLE.md` |
-| Preflight | `scripts/bootstrap.sh`, `solve.sh doctor` |
+| Operator | **Aaliya only** — `AALIYA.md` / `OPEN_IN_CURSOR.md` |
 
 ## Why this beats a bare chatbot
 

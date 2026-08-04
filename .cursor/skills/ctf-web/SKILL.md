@@ -9,12 +9,16 @@ description: >
 
 # CTF Web
 
-## Immediate
+Immediate tools:
 
 ```bash
-python3 tools/cypherflag.py http <url>
-python3 tools/cypherflag.py curl <url>
+python3 tools/cypherflag.py web-hunt <url>    # paths, forms, ffuf, nuclei
+python3 tools/cypherflag.py ffuf 'http://HOST/FUZZ'
+python3 tools/cypherflag.py sqlmap 'http://HOST/path?id=1'
+python3 tools/cypherflag.py nuclei 'http://HOST/'
 ```
+
+If scanners missing (Aaliya’s Mac): `bash scripts/install-mac-scanners.sh`
 
 Read `tools/payloads/web.md` and fire payloads systematically.
 

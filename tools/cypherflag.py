@@ -224,8 +224,173 @@ def web_hunt(url: str) -> dict[str, Any]:
             out["form_probes"].append(entry)
             note_flags(r.text, f"form:{kind}")
 
+    # Real scanners (ffuf / nuclei) — skip silently if not installed
+    out["scanners"] = {}
+    fuzz_url = base.rstrip("/") + "/FUZZ"
+    out["scanners"]["ffuf"] = ffuf_scan(fuzz_url, quick=True)
+    for f in out["scanners"]["ffuf"].get("flags_found") or []:
+        if f not in flags:
+            flags.append(f)
+    out["scanners"]["nuclei"] = nuclei_scan(base, quick=True)
+    for f in out["scanners"]["nuclei"].get("flags_found") or []:
+        if f not in flags:
+            flags.append(f)
+
     out["flags_found"] = flags
     return out
+
+
+def have(cmd: str) -> bool:
+    from shutil import which
+
+    return which(cmd) is not None
+
+
+def ffuf_scan(url_with_fuzz: str, wordlist: str | None = None, quick: bool = True) -> dict[str, Any]:
+    """Directory/path fuzz with ffuf. URL must contain FUZZ."""
+    if not have("ffuf"):
+        return {"error": "ffuf not installed", "fix": "bash scripts/install-mac-scanners.sh"}
+    wl = wordlist or str(Path(__file__).resolve().parent / "wordlists" / "paths.txt")
+    cmd = [
+        "ffuf",
+        "-u",
+        url_with_fuzz,
+        "-w",
+        wl,
+        "-mc",
+        "200,204,301,302,307,401,403",
+        "-t",
+        "20",
+        "-timeout",
+        "5",
+        "-of",
+        "json",
+        "-o",
+        "/dev/stdout",
+        "-s",
+    ]
+    if quick:
+        cmd += ["-maxtime", "60"]
+    r = run(cmd, timeout=90 if quick else 300)
+    flags = extract_flags(r.get("stdout") or "") + extract_flags(r.get("stderr") or "")
+    results = []
+    try:
+        data = json.loads(r["stdout"] or "{}")
+        for row in data.get("results") or []:
+            results.append(
+                {
+                    "status": row.get("status"),
+                    "url": row.get("url"),
+                    "length": row.get("length"),
+                }
+            )
+            flags.extend(extract_flags(str(row)))
+    except Exception:  # noqa: BLE001
+        pass
+    return {
+        "cmd": cmd,
+        "rc": r.get("rc"),
+        "results": results[:50],
+        "flags_found": list(dict.fromkeys(flags)),
+        "stderr_tail": (r.get("stderr") or "")[-400:],
+    }
+
+
+def sqlmap_scan(url: str, data: str | None = None, quick: bool = True) -> dict[str, Any]:
+    """sqlmap against a URL (authorized CTF only). batch + limited risk."""
+    if not have("sqlmap"):
+        return {"error": "sqlmap not installed", "fix": "bash scripts/install-mac-scanners.sh"}
+    cmd = [
+        "sqlmap",
+        "-u",
+        url,
+        "--batch",
+        "--random-agent",
+        "--level=2" if quick else "--level=3",
+        "--risk=1" if quick else "--risk=2",
+        "--timeout=10",
+        "--retries=1",
+        "--technique=BEUSTQ",
+    ]
+    if data:
+        cmd += ["--data", data]
+    if quick:
+        cmd += ["--time-sec=3", "--threads=2"]
+    r = run(cmd, timeout=120 if quick else 420)
+    blob = (r.get("stdout") or "") + "\n" + (r.get("stderr") or "")
+    return {
+        "cmd": cmd,
+        "rc": r.get("rc"),
+        "flags_found": extract_flags(blob),
+        "interesting": [
+            ln.strip()
+            for ln in blob.splitlines()
+            if any(
+                k in ln.lower()
+                for k in ("injectable", "fetched", "flag", "parameter", "payload", "database")
+            )
+        ][:40],
+        "tail": blob[-800:],
+    }
+
+
+def nuclei_scan(url: str, quick: bool = True) -> dict[str, Any]:
+    """nuclei exposures/misconfig (rate-limited)."""
+    if not have("nuclei"):
+        return {"error": "nuclei not installed", "fix": "bash scripts/install-mac-scanners.sh"}
+    cmd = [
+        "nuclei",
+        "-u",
+        url,
+        "-silent",
+        "-jsonl",
+        "-rate-limit",
+        "50",
+        "-timeout",
+        "5",
+        "-retries",
+        "1",
+    ]
+    if quick:
+        cmd += ["-tags", "exposure,misconfig,config,token,tech"]
+        cmd += ["-severity", "info,low,medium,high,critical"]
+    r = run(cmd, timeout=120 if quick else 400)
+    findings = []
+    flags: list[str] = []
+    for ln in (r.get("stdout") or "").splitlines():
+        flags.extend(extract_flags(ln))
+        try:
+            obj = json.loads(ln)
+            findings.append(
+                {
+                    "template": obj.get("template-id") or obj.get("templateID"),
+                    "name": (obj.get("info") or {}).get("name"),
+                    "matched": obj.get("matched-at") or obj.get("host"),
+                }
+            )
+            flags.extend(extract_flags(json.dumps(obj)))
+        except Exception:  # noqa: BLE001
+            if ln.strip():
+                findings.append({"raw": ln[:200]})
+    return {
+        "cmd": cmd,
+        "rc": r.get("rc"),
+        "findings": findings[:40],
+        "flags_found": list(dict.fromkeys(flags)),
+        "stderr_tail": (r.get("stderr") or "")[-400:],
+    }
+
+
+def scanners_available() -> dict[str, bool]:
+    return {
+        "ffuf": have("ffuf"),
+        "sqlmap": have("sqlmap"),
+        "nuclei": have("nuclei"),
+        "gobuster": have("gobuster"),
+        "nmap": have("nmap"),
+        "dig": have("dig"),
+        "curl": have("curl"),
+    }
 
 
 def scaffold_challenge(slug: str, title: str = "", body: str = "") -> dict[str, Any]:
@@ -323,6 +488,18 @@ def autosolve(
                 }
             )
             add_flags(hunt.get("flags_found") or [])
+            # sqlmap on likely injection endpoints
+            if any(x in url.lower() for x in ("login", "search", "id=", "cat=", "page=", "q=")):
+                sm = sqlmap_scan(url, quick=True)
+                result["steps"].append(
+                    {
+                        "sqlmap": url,
+                        "interesting": sm.get("interesting"),
+                        "flags": sm.get("flags_found"),
+                        "error": sm.get("error"),
+                    }
+                )
+                add_flags(sm.get("flags_found") or [])
             host = urlparse(url).hostname
             if host and host not in nmap_done and len(nmap_done) < 2:
                 nmap_done.add(host)
@@ -571,8 +748,24 @@ def main() -> None:
     p.add_argument("slug")
     p.add_argument("--title", default="")
 
-    p = sub.add_parser("web-hunt", help="Aggressive path + form probes")
+    p = sub.add_parser("web-hunt", help="Aggressive path + form probes + ffuf/nuclei")
     p.add_argument("url")
+
+    p = sub.add_parser("ffuf", help="ffuf path fuzz (URL must include FUZZ)")
+    p.add_argument("url")
+    p.add_argument("--wordlist", default=None)
+    p.add_argument("--full", action="store_true")
+
+    p = sub.add_parser("sqlmap", help="sqlmap (CTF targets only)")
+    p.add_argument("url")
+    p.add_argument("-d", "--data", default=None)
+    p.add_argument("--full", action="store_true")
+
+    p = sub.add_parser("nuclei", help="nuclei exposure/misconfig scan")
+    p.add_argument("url")
+    p.add_argument("--full", action="store_true")
+
+    p = sub.add_parser("scanners", help="Which scanners are installed")
 
     p = sub.add_parser("extract-targets", help="Pull URLs/IPs/hosts from text")
     p.add_argument("path", nargs="?", default="-")
@@ -604,6 +797,14 @@ def main() -> None:
         out = recon(args.target)
     elif args.cmd == "web-hunt":
         out = web_hunt(args.url)
+    elif args.cmd == "ffuf":
+        out = ffuf_scan(args.url, wordlist=args.wordlist, quick=not args.full)
+    elif args.cmd == "sqlmap":
+        out = sqlmap_scan(args.url, data=args.data, quick=not args.full)
+    elif args.cmd == "nuclei":
+        out = nuclei_scan(args.url, quick=not args.full)
+    elif args.cmd == "scanners":
+        out = scanners_available()
     elif args.cmd == "peel":
         raw = args.data
         if args.file:

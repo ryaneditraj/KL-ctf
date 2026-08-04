@@ -1,14 +1,11 @@
-# Judge one-pager — KL-ctf (CypherFlag)
+# Judge one-pager — KL-ctf
 
-**What:** Cursor drop-in **agent harness** for cybersecurity CTF.
+**Operator:** Aaliya (non-technical) · **Runtime:** Cursor Agent (**agentic**) · **Harness:** this repo
 
-**Formula:** `Agent = LLM + Tools + Loop + Context` · Harness = skills, memory, guardrails, traces.
+**Formula:** `Agent = LLM + Tools + Loop + Context`
 
-**Tools (workshop):** dig · nmap · curl (+ whois, web-hunt, peel, autosolve) via `tools/cypherflag.py`
+**Tools:** dig · nmap · curl · **ffuf · sqlmap · nuclei** (auto-installed on her Mac via Homebrew when the agent boots)
 
-**Operator:** Non-technical — pastes challenges, clicks Allow, submits `FLAG:`
+**Flow:** She pastes CTFd text → agent loops with scanners → `FLAG:` → she submits
 
-**Explain line (operator can say):**  
-“AI is the brain; this project is the body. I paste challenges; it finds flags; I submit them.”
-
-**Proof:** `EXPLAIN.md` · `ARCHITECTURE.md` · `notes/` · `flags/FOUND.md`
+**Why agentic:** Cursor runs think→tool→observe; not a chatbot. See `EXPLAIN.md` / `ARCHITECTURE.md`

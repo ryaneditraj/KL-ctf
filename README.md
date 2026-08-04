@@ -1,62 +1,54 @@
 # KL-ctf
 
-**CypherFlag** — drop this folder into **Cursor** (or Claude Code). That’s the product.
+**Agentic CTF harness for Aaliya**, running on **Cursor Agent**.
 
-Autonomous CTF agent harness for UCSI / Cypherly-style hackathons:  
-`LLM + dig/nmap/curl + loop + harness` → find **flags**.
-
-Built for a **zero-knowledge operator (Aaliya)**: she pastes challenges; the agent does the rest.
+Workshop formula: `LLM + Tools + Loop + Context` + harness.  
+Real tools: dig, nmap, curl + scanners **ffuf, sqlmap, nuclei**.
 
 ---
 
-## Aaliya (start here)
+## Aaliya (only human operator)
 
-1. Open this folder in Cursor → Agent chat → type `hi`  
-2. Read **[`OPEN_IN_CURSOR.md`](OPEN_IN_CURSOR.md)**  
-3. Practice saying **[`EXPLAIN.md`](EXPLAIN.md)** (judges)  
-4. Full guide: **[`AALIYA.md`](AALIYA.md)**
+1. Open this folder in Cursor → type `hi` in Agent  
+2. **Allow** Mac installs when asked  
+3. Paste challenges → Allow → submit `FLAG:`  
+
+Guides: [`OPEN_IN_CURSOR.md`](OPEN_IN_CURSOR.md) · [`AALIYA.md`](AALIYA.md) · [`EXPLAIN.md`](EXPLAIN.md)
 
 ```
-I am Aaliya. Boot KL-ctf. Teach me the 2-minute version from AALIYA.md, then wait for challenges.
+I am Aaliya. Boot KL-ctf. Install scanners on my Mac if needed. Teach me the 2-minute version, then wait for challenges.
 ```
+
+---
+
+## Is it agentic?
+
+**Yes.** Cursor Agent is the runtime loop (think → tool → observe → repeat). This repo is the harness (scanners, skills, memory, guardrails). That is what the competition wants — not a chatbot.
 
 ---
 
 ## AI agents
 
-Read **[`START_HERE.md`](START_HERE.md)** on any message, then **[`AGENTS.md`](AGENTS.md)**.  
-Boot: `bash scripts/first-run.sh`. Challenge → `autosolve` → skills → `FLAG:`.
+[`START_HERE.md`](START_HERE.md) → [`AGENTS.md`](AGENTS.md)  
+Boot: `bash scripts/first-run.sh` → `bash scripts/install-mac-scanners.sh`
+
+```bash
+python3 tools/cypherflag.py scanners
+python3 tools/cypherflag.py ffuf 'http://TARGET/FUZZ'
+python3 tools/cypherflag.py sqlmap 'http://TARGET/item?id=1'
+python3 tools/cypherflag.py nuclei 'http://TARGET/'
+python3 tools/cypherflag.py web-hunt 'http://TARGET/'
+python3 tools/cypherflag.py autosolve --slug S --text-file challenges/S/README.md
+```
 
 ---
 
-## Everyone else
+## Docs
 
 | Role | Doc |
 |---|---|
-| Ryan / live ops | [`BATTLE.md`](BATTLE.md) |
 | Judges | [`JUDGE-ONEPAGER.md`](JUDGE-ONEPAGER.md) · [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| Doc index | [`docs/INDEX.md`](docs/INDEX.md) |
+| Ryan | [`BATTLE.md`](BATTLE.md) |
+| Index | [`docs/INDEX.md`](docs/INDEX.md) |
 
----
-
-## Setup (agent usually runs this)
-
-```bash
-git clone https://github.com/ryaneditraj/KL-ctf.git
-cd KL-ctf
-bash scripts/first-run.sh
-```
-
-## Toolkit
-
-```bash
-python3 tools/cypherflag.py autosolve --slug S --text-file challenges/S/README.md
-python3 tools/cypherflag.py web-hunt http://TARGET/
-python3 tools/cypherflag.py recon TARGET
-python3 tools/cypherflag.py peel 'base64orhex...'
-python3 tools/cypherflag.py dig|nmap|curl|whois|http ...
-```
-
-## Safety
-
-Authorized CTF targets only. No DoS. Operator clicks Allow; agent runs tools.
+Authorized CTF use only.

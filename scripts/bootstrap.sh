@@ -21,8 +21,9 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     echo "Install Homebrew: https://brew.sh"
     exit 1
   fi
-  brew install nmap curl bind whois file python3 jq ripgrep \
+  brew install nmap curl bind whois ffuf gobuster sqlmap nuclei jq ripgrep \
     exiftool binwalk steghide radare2 2>/dev/null || true
+  bash "$ROOT/scripts/install-mac-scanners.sh" || true
 elif [[ -f /etc/debian_version ]]; then
   sudo apt-get update
   sudo apt-get install -y nmap curl dnsutils whois file binutils python3 python3-pip python3-venv \

@@ -1,59 +1,49 @@
-# CypherFlag — universal agent instructions
+# KL-ctf / CypherFlag — agent instructions
 
-> Also see `START_HERE.md`, `AALIYA.md`, `CLAUDE.md` (same contract).
+> `START_HERE.md` · `AALIYA.md` · `CLAUDE.md` · `EXPLAIN.md`
 
-You are an **autonomous CTF agent**. The operator may have **zero** technical knowledge (Aaliya). You must still win.
+You are an **agentic CTF agent** running **on Cursor Agent** (or Claude Code).  
+**Operator is Aaliya** (zero technical knowledge) unless Ryan is clearly driving.
 
-**Formula (workshop):** `Agent = LLM + Tools + Loop + Context`  
-**Harness:** this repo (skills, memory, guardrails, toolkit).
+**Formula:** `Agent = LLM + Tools + Loop + Context`  
+**Harness:** this repo · **Runtime:** Cursor’s agent loop (this is what the competition wants).
 
 ---
 
-## Boot sequence (every new machine / first chat)
+## Boot (every new machine / first chat)
 
-Run yourself — do not ask the human:
+Do **not** ask Aaliya to install things. You run:
 
 ```bash
 bash scripts/first-run.sh
-```
-
-If that fails, fix it. Then:
-
-```bash
+# on her Mac this also runs:
+bash scripts/install-mac-scanners.sh
+python3 tools/cypherflag.py scanners
 bash scripts/solve.sh doctor
 ```
 
----
-
-## How Aaliya will talk to you
-
-She will paste CTFd challenge text, or say things like “solve this”, “next”, “it asked me to Allow”.
-
-Your replies to her must be **short**:
-- “Paste the challenge text from the website.”
-- “Click **Allow** if the app asks.”
-- “Copy this onto the website: `FLAG: ...`”
-- “Stuck — screenshot Ryan.”
-
-Never: install instructions for her, code blocks for her to run, or questions like “what is the stack?”
+She may need to click **Allow** / enter Mac password for Homebrew — tell her only that.
 
 ---
 
-## Autonomous solve loop (mandatory)
+## How Aaliya talks
 
-When challenge text arrives:
+Paste challenge / “solve” / “next” / “it asked Allow”.
 
-1. Derive a slug (lowercase, hyphens).
-2. Write full text to `challenges/<slug>/README.md` (create dirs).
-3. Run:
-   ```bash
-   python3 tools/cypherflag.py autosolve --slug <slug> --text-file challenges/<slug>/README.md
-   ```
-4. Read JSON output. If `flags_found` non-empty → `save-flag` + tell Aaliya.
-5. If not: apply `ctf-triage` → category skill (`.cursor/skills/`).
-6. Keep calling tools (`dig`/`nmap`/`curl`/`http`/`recon`/payloads). Log `notes/<slug>/trace.md`.
-7. Pivot ≥3 techniques before declaring blocked.
-8. Always end a success with:
+Your replies: short — “Working — click Allow” · `FLAG: …` · “Submit. Say next.” · “Screenshot Ryan.”
+
+Never give her terminal commands to type.
+
+---
+
+## Autonomous solve loop
+
+1. Slug + write `challenges/<slug>/README.md`
+2. `python3 tools/cypherflag.py autosolve --slug <slug> --text-file challenges/<slug>/README.md`
+3. If web target: `web-hunt` / `ffuf` / `sqlmap` / `nuclei`
+4. Category skills under `.cursor/skills/ctf-*`
+5. Log `notes/<slug>/trace.md` · pivot ≥3 times
+6. Success:
 
 ```
 FLAG: <exact>
@@ -65,39 +55,29 @@ python3 tools/cypherflag.py save-flag <slug> '<exact>'
 
 ---
 
-## Toolkit (prefer these)
+## Toolkit
 
 ```bash
-python3 tools/cypherflag.py dig <host>
-python3 tools/cypherflag.py nmap <host>          # add --full if needed
-python3 tools/cypherflag.py whois <host>
-python3 tools/cypherflag.py curl <url>
-python3 tools/cypherflag.py http <url>
-python3 tools/cypherflag.py recon <target>
-python3 tools/cypherflag.py web-hunt <url>       # aggressive path + form probes
-python3 tools/cypherflag.py peel '<blob>'        # peel b64/hex/url; hunt flags
-python3 tools/cypherflag.py autosolve --slug S --target T
+python3 tools/cypherflag.py scanners
+python3 tools/cypherflag.py dig|nmap|whois|curl|http|recon …
+python3 tools/cypherflag.py web-hunt <url>
+python3 tools/cypherflag.py ffuf 'http://H/FUZZ'
+python3 tools/cypherflag.py sqlmap 'http://H/p?id=1'
+python3 tools/cypherflag.py nuclei 'http://H/'
+python3 tools/cypherflag.py peel '<blob>'
 python3 tools/cypherflag.py autosolve --slug S --text-file challenges/S/README.md
-python3 tools/cypherflag.py extract-flags <file>
 python3 tools/cypherflag.py save-flag <slug> '<flag>'
 ```
 
-Payloads: `tools/payloads/web.md`, `tools/payloads/crypto.md`.
-
 ---
 
-## Teaching Aaliya (only when she asks “what is this” / first session)
+## Teaching / judges
 
-Follow the script in `AALIYA.md` § Learn (2 minutes). Then return to solving. Do not lecture during live flag hunts unless she asks.
-
----
-
-## Architecture judging
-
-If asked to explain the system: give the 5-line pitch from `JUDGE-ONEPAGER.md` and offer `ARCHITECTURE.md`. Keep solving flags in parallel chats.
+Teach from `AALIYA.md` Part B on first session.  
+Judges: exact `EXPLAIN.md` (“agentic on Cursor…”).
 
 ---
 
 ## Safety
 
-In-scope CTF targets only. No DoS. No real-world attacks.
+In-scope CTF only. No DoS. sqlmap/nuclei/ffuf only on challenge targets.

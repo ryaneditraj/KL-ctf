@@ -1,39 +1,38 @@
 ---
-description: KL-ctf drop-in — any chat with Aaliya or empty/hi must boot and operate autonomously
+description: KL-ctf for Aaliya — agentic Cursor harness; auto-install scanners; autonomous CTF solve
 alwaysApply: true
 ---
 
-# KL-ctf / CypherFlag — DROP-IN MODE
+# KL-ctf — AGENTIC · OPERATOR = AALIYA
 
-The human likely only opened this folder in Cursor. They may have zero technical skill (Aaliya).
+This competition entry is an **agentic** system: it runs on **Cursor Agent** (think → call tools → observe → loop). This repo is the **harness**. The only human operator is **Aaliya** (non-technical).
 
-## On EVERY new chat / first user message (including "hi")
+## Who
+- **Aaliya** = only user. Paste challenges, click Allow, submit flags.
+- **You (AI)** = the agent. You install tools, scan, exploit, find flags. Never ask her to use Terminal.
 
-1. Silently read `START_HERE.md`, `AALIYA.md`, `EXPLAIN.md`
-2. Run `bash scripts/first-run.sh` if setup not confirmed
-3. If user is Aaliya / non-technical / just said hi:
-   - Reply with a tiny welcome + 2-minute teach from `AALIYA.md` Part B (or ask if they already know)
-   - End with: “Paste a challenge when ready. Click Allow if asked.”
-4. Do **not** ask them to open Terminal, install packages, or read the whole README
+## On ANY first message (including hi)
+1. Read `START_HERE.md`, `AALIYA.md`, `EXPLAIN.md`
+2. Run `bash scripts/first-run.sh` (installs Homebrew scanners on her Mac)
+3. If scanners missing: `bash scripts/install-mac-scanners.sh`
+4. Teach 2-minute Part B; wait for challenges
 
-## On challenge-shaped input (URLs, IPs, CTFd text, “solve”, files)
+## On challenge paste
+Autonomous — no plan approval from her:
+1. Save `challenges/<slug>/README.md`
+2. `python3 tools/cypherflag.py autosolve --slug <slug> --text-file ...`
+3. Use real scanners: `ffuf`, `sqlmap`, `nuclei`, plus dig/nmap/curl
+4. Skills `.cursor/skills/ctf-*` until `FLAG:`
+5. `save-flag` + tell her to submit
 
-Autonomous solve — no plan approval needed from her:
+## Scanner commands
+```bash
+python3 tools/cypherflag.py scanners
+python3 tools/cypherflag.py ffuf 'http://TARGET/FUZZ'
+python3 tools/cypherflag.py sqlmap 'http://TARGET/item?id=1'
+python3 tools/cypherflag.py nuclei 'http://TARGET/'
+python3 tools/cypherflag.py web-hunt 'http://TARGET/'
+```
 
-1. Write `challenges/<slug>/README.md`
-2. `python3 tools/cypherflag.py autosolve --slug <slug> --text-file challenges/<slug>/README.md`
-   (or `--target` if clear)
-3. If no flag: use `.cursor/skills/ctf-*` + `web-hunt` / `recon` / payloads; pivot ≥3 times
-4. Print `FLAG: ...` and `save-flag`
-5. Tell her only to submit + say next
-
-## Explain mode
-
-If she asks how it works / judges are listening: use **exact** lines from `EXPLAIN.md`.
-
-## Power rules
-
-- Prefer `tools/cypherflag.py` for dig/nmap/curl/web-hunt/autosolve/peel
-- One challenge per chat
-- You run all commands
-- In-scope CTF only
+## Explain
+Exact lines in `EXPLAIN.md` (agentic harness on Cursor).

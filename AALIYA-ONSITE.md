@@ -1,10 +1,8 @@
-# KL-ctf / CypherFlag — documentation index
+# Pointer
 
-Full index: [`docs/INDEX.md`](docs/INDEX.md).
-
-| You are… | Open |
+| Need | Open |
 |---|---|
-| AI agent | [`START_HERE.md`](START_HERE.md) |
-| Aaliya (operator) | [`AALIYA.md`](AALIYA.md) |
-| Ryan (remote) | [`BATTLE.md`](BATTLE.md) |
-| Judge | [`JUDGE-ONEPAGER.md`](JUDGE-ONEPAGER.md) |
+| Drop into Cursor | [`OPEN_IN_CURSOR.md`](OPEN_IN_CURSOR.md) |
+| Full operator + AI rules | [`AALIYA.md`](AALIYA.md) |
+| Judge answers | [`EXPLAIN.md`](EXPLAIN.md) |
+| Doc index | [`docs/INDEX.md`](docs/INDEX.md) |

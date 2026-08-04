@@ -182,8 +182,16 @@ def web_hunt(url: str) -> dict[str, Any]:
     soup = BeautifulSoup(base_resp.text, "lxml")
     probes = [
         ("ssti", "{{7*7}}"),
+        ("ssti2", "${7*7}"),
         ("sqli", "' OR '1'='1' -- "),
+        ("sqli2", "\" OR \"1\"=\"1\" -- "),
+        ("union", "' UNION SELECT null,null,null-- "),
         ("cmd", "; id"),
+        ("cmd2", "| id"),
+        ("cmd3", "$(id)"),
+        ("lfi", "../../../etc/passwd"),
+        ("lfi2", "....//....//....//etc/passwd"),
+        ("xss", "<script>alert(1)</script>"),
     ]
     for form in soup.find_all("form")[:5]:
         action = urljoin(str(base_resp.url), form.get("action") or "")
@@ -277,6 +285,16 @@ def autosolve(
 
     add_flags(extract_flags(body))
 
+    # Peel encoding-looking blobs in challenge text
+    for blob in re.findall(r"[A-Za-z0-9+/=_-]{24,}", body or ""):
+        try:
+            peeled = peel_encodings(blob)
+            if peeled.get("flags_found"):
+                result["steps"].append({"peel": blob[:40], "flags": peeled["flags_found"]})
+                add_flags(peeled["flags_found"])
+        except Exception:  # noqa: BLE001
+            pass
+
     # DNS/TXT sometimes holds flags
     for host in targets["hosts"][:5] + targets["ips"][:3]:
         try:
@@ -336,6 +354,64 @@ def autosolve(
         else "Submit FLAG lines on CTFd."
     )
     return result
+
+
+def peel_encodings(data: str, rounds: int = 8) -> dict[str, Any]:
+    """Peel base64/hex/url encodings; hunt flags at each layer."""
+    import base64
+    import binascii
+    from urllib.parse import unquote_to_bytes
+
+    layers: list[dict[str, Any]] = []
+    cur: bytes
+    try:
+        cur = data.encode() if isinstance(data, str) else data
+    except Exception:  # noqa: BLE001
+        cur = str(data).encode()
+
+    flags: list[str] = []
+    for i in range(rounds):
+        text_try = cur.decode("utf-8", errors="replace")
+        found = extract_flags(text_try)
+        layer = {"i": i, "len": len(cur), "preview": text_try[:120], "flags": found}
+        for f in found:
+            if f not in flags:
+                flags.append(f)
+        # try transforms
+        nxt = None
+        # hex
+        hx = re.sub(r"\s+", "", text_try.strip())
+        if re.fullmatch(r"[0-9a-fA-F]+", hx) and len(hx) % 2 == 0 and len(hx) >= 8:
+            try:
+                nxt = binascii.unhexlify(hx)
+                layer["transform"] = "hex"
+            except Exception:  # noqa: BLE001
+                pass
+        if nxt is None:
+            # base64
+            pad = text_try.strip() + ("=" * (-len(text_try.strip()) % 4))
+            try:
+                nxt = base64.b64decode(pad, validate=False)
+                if nxt and nxt != cur:
+                    layer["transform"] = "b64"
+                else:
+                    nxt = None
+            except Exception:  # noqa: BLE001
+                nxt = None
+        if nxt is None:
+            try:
+                u = unquote_to_bytes(text_try)
+                if u != cur and b"%" in cur:
+                    nxt = u
+                    layer["transform"] = "url"
+            except Exception:  # noqa: BLE001
+                pass
+        layers.append(layer)
+        if nxt is None or nxt == cur:
+            break
+        cur = nxt
+
+    return {"layers": layers, "flags_found": flags, "final_preview": cur[:200].decode("utf-8", errors="replace")}
 
 
 def whois_lookup(target: str) -> dict[str, Any]:
@@ -507,6 +583,10 @@ def main() -> None:
     p.add_argument("--text-file", default=None)
     p.add_argument("--text", default=None)
 
+    p = sub.add_parser("peel", help="Peel base64/hex/url layers; hunt flags")
+    p.add_argument("data", nargs="?", default=None)
+    p.add_argument("--file", default=None)
+
     args = ap.parse_args()
     out: Any
 
@@ -524,6 +604,13 @@ def main() -> None:
         out = recon(args.target)
     elif args.cmd == "web-hunt":
         out = web_hunt(args.url)
+    elif args.cmd == "peel":
+        raw = args.data
+        if args.file:
+            raw = Path(args.file).read_text(errors="ignore")
+        if raw is None:
+            raw = sys.stdin.read()
+        out = peel_encodings(raw)
     elif args.cmd == "extract-targets":
         text = sys.stdin.read() if args.path == "-" else Path(args.path).read_text(errors="ignore")
         out = extract_targets(text)

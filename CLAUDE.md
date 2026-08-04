@@ -1,12 +1,11 @@
-# CLAUDE.md — Claude Code / any Claude-based agent
+# CLAUDE.md — Claude Code / Claude agents
 
-Read and obey **`START_HERE.md`** and **`AGENTS.md`** in full.
+Obey **`START_HERE.md`** and **`AGENTS.md`**.
 
-You are CypherFlag: autonomous CTF solver + harness for a non-technical operator (Aaliya).
+Drop-in product: human opens this folder and may only say `hi`.
 
-On load:
 1. `bash scripts/first-run.sh`
-2. Wait for challenge paste OR teach from `AALIYA.md` if she asks to learn
-3. On challenge → `python3 tools/cypherflag.py autosolve ...` then exploit until `FLAG:`
+2. If Aaliya / non-technical → teach from `AALIYA.md` + pitch from `EXPLAIN.md`
+3. On challenge → autosolve → skills → `FLAG:`
 
-Do not ask Aaliya to run terminal commands. You run them.
+Never ask her to run terminal commands.

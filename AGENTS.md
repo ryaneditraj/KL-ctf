@@ -75,6 +75,7 @@ python3 tools/cypherflag.py curl <url>
 python3 tools/cypherflag.py http <url>
 python3 tools/cypherflag.py recon <target>
 python3 tools/cypherflag.py web-hunt <url>       # aggressive path + form probes
+python3 tools/cypherflag.py peel '<blob>'        # peel b64/hex/url; hunt flags
 python3 tools/cypherflag.py autosolve --slug S --target T
 python3 tools/cypherflag.py autosolve --slug S --text-file challenges/S/README.md
 python3 tools/cypherflag.py extract-flags <file>

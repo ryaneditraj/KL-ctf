@@ -1,0 +1,52 @@
+[H[2J[3J[1;38;5;149mKL-ctf[0m  CypherFlag  ·  local demo
+Authorized fixture only. Nothing here touches a third-party host.
+
+[38;5;149m$[0m python3 tools/cypherflag.py scanners
+{
+  "ffuf": false,
+  "sqlmap": false,
+  "nuclei": false,
+  "gobuster": false,
+  "nmap": false,
+  "dig": true,
+  "curl": true
+}
+
+[38;5;149m$[0m python3 tools/cypherflag.py peel S0xDVEZ7bG9jYWxfZGVtb19ub3RfYV9yZWFsX2ZsYWd9
+{
+  "layers": [
+    {
+      "i": 0,
+      "len": 44,
+      "preview": "S0xDVEZ7bG9jYWxfZGVtb19ub3RfYV9yZWFsX2ZsYWd9",
+      "flags": [],
+      "transform": "b64"
+    },
+    {
+      "i": 1,
+      "len": 33,
+      "preview": "KLCTF{local_demo_not_a_real_flag}",
+      "flags": [
+        "KLCTF{local_demo_not_a_real_flag}"
+      ],
+      "transform": "b64"
+    },
+    {
+      "i": 2,
+      "len": 19,
+      "preview": "(\ufffd\ufffd\u0016Z\u001cjW^\ufffd\ufffd\u8d6a\ufffdjW\ufffdj",
+      "flags": []
+    }
+  ],
+  "flags_found": [
+    "KLCTF{local_demo_not_a_real_flag}"
+  ],
+  "final_preview": "(\ufffd\ufffd\u0016Z\u001cjW^\ufffd\ufffd\u8d6a\ufffdjW\ufffdj"
+}
+
+[38;5;149m$[0m python3 tools/cypherflag.py curl http://169.254.169.254/
+{
+  "error": "cloud metadata hosts are blocked; set CYPHERFLAG_ALLOW_METADATA=1 only inside an authorized lab"
+}
+
+READY

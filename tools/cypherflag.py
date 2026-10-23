@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
+import os
 import re
-import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,220 @@ BRACE_FLAG_RE = re.compile(r"[A-Za-z0-9_\-]{2,32}\{[^}\n]{3,200}\}")
 FLAG_LABEL_RE = re.compile(
     r"(?:FLAG|flag|CTF|ctf|UCSI|ucsi)\s*[:=]\s*(\S{4,160})"
 )
+
+# Operator-supplied .env may set only these. Anything else is ignored so a
+# local env file cannot override PATH or other process settings.
+_DOTENV_KEYS = {"CYPHERFLAG_TLS_VERIFY", "CYPHERFLAG_ALLOW_METADATA"}
+_HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+_METADATA_NAMES = {"metadata.google.internal", "metadata"}
+_METADATA_IPS = {
+    ipaddress.ip_address("169.254.169.254"),
+    ipaddress.ip_address("169.254.170.2"),
+    ipaddress.ip_address("fd00:ec2::254"),
+}
+
+
+def load_dotenv() -> None:
+    """Load the allowlisted keys from the repo .env, without overriding the environment."""
+    path = Path(__file__).resolve().parents[1] / ".env"
+    if not path.is_file():
+        return
+    for raw in path.read_text(errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in _DOTENV_KEYS:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+def _truthy(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def tls_verify_enabled() -> bool:
+    """Verify TLS certificates unless the operator explicitly opts out."""
+    return _truthy("CYPHERFLAG_TLS_VERIFY", default=True)
+
+
+def metadata_allowed() -> bool:
+    return _truthy("CYPHERFLAG_ALLOW_METADATA", default=False)
+
+
+def _reject_controls(value: str, label: str) -> str:
+    if "\x00" in value or "\n" in value or "\r" in value:
+        raise ValueError(f"{label} contains an unsafe character")
+    if value.startswith("-") or value.startswith("@"):
+        raise ValueError(f"{label} must not start with '-' or '@'")
+    return value
+
+
+def _coerce_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    text = host.strip().strip("[]").lower().rstrip(".")
+    if text.startswith("0x"):
+        try:
+            number = int(text, 16)
+        except ValueError:
+            return None
+        if 0 <= number <= 0xFFFFFFFF:
+            return ipaddress.IPv4Address(number)
+        return None
+    if text.isdigit():
+        number = int(text)
+        if 0 <= number <= 0xFFFFFFFF:
+            return ipaddress.IPv4Address(number)
+    try:
+        parsed = ipaddress.ip_address(text)
+    except ValueError:
+        return None
+    if isinstance(parsed, ipaddress.IPv6Address) and parsed.ipv4_mapped is not None:
+        return parsed.ipv4_mapped
+    return parsed
+
+
+def is_metadata_host(host: str) -> bool:
+    name = host.strip().strip("[]").lower().rstrip(".")
+    if name in _METADATA_NAMES or name.endswith(".metadata.google.internal"):
+        return True
+    parsed = _coerce_ip(name)
+    return parsed in _METADATA_IPS if parsed is not None else False
+
+
+def _reject_metadata(host: str) -> None:
+    if is_metadata_host(host) and not metadata_allowed():
+        raise ValueError(
+            "cloud metadata hosts are blocked; set CYPHERFLAG_ALLOW_METADATA=1 "
+            "only inside an authorized lab"
+        )
+
+
+def guard_host(target: str) -> str:
+    if not isinstance(target, str):
+        raise ValueError("target must be a string")
+    target = target.strip()
+    _reject_controls(target, "target")
+    if any(ch.isspace() for ch in target):
+        raise ValueError("target must not contain whitespace")
+    if not re.fullmatch(r"[A-Za-z0-9._:\-\[\]]{1,253}", target):
+        raise ValueError("target has unexpected characters")
+    _reject_metadata(target.strip("[]"))
+    return target
+
+
+def guard_method(method: str | None) -> str:
+    verb = (method or "GET").strip().upper()
+    if verb not in _HTTP_METHODS:
+        raise ValueError("HTTP method is not allowed")
+    return verb
+
+
+def guard_url(url: str) -> str:
+    if not isinstance(url, str):
+        raise ValueError("url must be a string")
+    url = url.strip()
+    _reject_controls(url, "url")
+    if any(ch.isspace() for ch in url):
+        raise ValueError("url must not contain whitespace")
+    if len(url) > 4096:
+        raise ValueError("url is too long")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("only http and https URLs are allowed")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("url is missing a host")
+    _reject_metadata(host)
+    return url
+
+
+def guard_line(value: str, label: str) -> str:
+    if not isinstance(value, str) or value.strip() == "":
+        raise ValueError(f"{label} is empty")
+    if len(value) > 8192:
+        raise ValueError(f"{label} is too long")
+    return _reject_controls(value, label)
+
+
+def guard_data(value: str) -> str:
+    """POST bodies may contain spaces and quotes, but not curl/sqlmap flag or file tricks."""
+    if not isinstance(value, str):
+        raise ValueError("data must be a string")
+    if "\x00" in value:
+        raise ValueError("data contains an unsafe character")
+    if value.startswith("-") or value.startswith("@"):
+        raise ValueError("data must not start with '-' or '@'")
+    if len(value) > 1_000_000:
+        raise ValueError("data is too long")
+    return value
+
+
+def guard_wordlist(path: str) -> str:
+    path = guard_line(path, "wordlist")
+    candidate = Path(path)
+    if not candidate.is_file():
+        raise ValueError("wordlist must be an existing local file")
+    return str(candidate)
+
+
+def _silence_insecure_warning() -> None:
+    try:
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def guarded_session() -> Any:
+    import requests
+
+    session = requests.Session()
+    session.headers["User-Agent"] = "CypherFlag/1.0"
+    session.hooks["response"].append(_redirect_guard)
+    return session
+
+
+def _redirect_guard(response: Any, **kwargs: Any) -> Any:
+    # A 3xx that the caller asked not to follow is evidence, not a hop.
+    if kwargs.get("allow_redirects", True) is False:
+        return response
+    if not (response.is_redirect or response.is_permanent_redirect):
+        return response
+    location = response.headers.get("Location", "")
+    if location:
+        guard_url(urljoin(response.url, location))
+    return response
+
+
+def request_http(session: Any, method: str, url: str, **kwargs: Any) -> tuple[Any, bool]:
+    """Return (response, used_insecure_tls).
+
+    Certificates are verified by default. A single retry without verification
+    keeps authorized labs that use a self-signed certificate working.
+    """
+    import requests
+
+    verify = bool(kwargs.pop("verify", tls_verify_enabled()))
+    try:
+        return session.request(method, url, verify=verify, **kwargs), False
+    except requests.exceptions.SSLError:
+        if not verify:
+            raise
+        _silence_insecure_warning()
+        response = session.request(method, url, verify=False, **kwargs)
+        return response, True
 
 
 def run(cmd: list[str], timeout: int = 120) -> dict[str, Any]:
@@ -36,6 +251,7 @@ def run(cmd: list[str], timeout: int = 120) -> dict[str, Any]:
 
 
 def dig_lookup(target: str) -> dict[str, Any]:
+    target = guard_host(target)
     out: dict[str, Any] = {"target": target, "records": {}}
     for rtype in ("A", "AAAA", "MX", "TXT", "NS", "CNAME"):
         r = run(["dig", "+short", target, rtype], timeout=30)
@@ -47,14 +263,16 @@ def dig_lookup(target: str) -> dict[str, Any]:
 
 
 def nmap_scan(target: str, full: bool = False, quick: bool = False) -> dict[str, Any]:
+    target = guard_host(target)
+    # `--` keeps a target from being parsed as an nmap option.
     if full:
-        cmd = ["nmap", "-Pn", "-sV", "-sC", "-T4", "-p-", target]
+        cmd = ["nmap", "-Pn", "-sV", "-sC", "-T4", "-p-", "--", target]
         timeout = 600
     elif quick:
-        cmd = ["nmap", "-Pn", "-T4", "--top-ports", "100", target]
+        cmd = ["nmap", "-Pn", "-T4", "--top-ports", "100", "--", target]
         timeout = 90
     else:
-        cmd = ["nmap", "-Pn", "-sV", "-sC", "-T4", "--top-ports", "1000", target]
+        cmd = ["nmap", "-Pn", "-sV", "-sC", "-T4", "--top-ports", "1000", "--", target]
         timeout = 300
     r = run(cmd, timeout=timeout)
     return {"target": target, "full": full, "quick": quick, **r}
@@ -62,18 +280,35 @@ def nmap_scan(target: str, full: bool = False, quick: bool = False) -> dict[str,
 
 
 def curl_fetch(url: str, method: str = "GET", data: str | None = None) -> dict[str, Any]:
-    cmd = ["curl", "-sS", "-L", "-D", "-", "--max-time", "30", "-X", method]
+    url = guard_url(url)
+    method = guard_method(method)
     if data is not None:
-        cmd += ["--data", data]
-    cmd.append(url)
-    r = run(cmd, timeout=60)
-    # Split headers/body on first blank line in stdout (curl -D - interleaves; use -i style)
-    # Re-run with -i for cleaner parse
-    cmd2 = ["curl", "-sS", "-L", "-i", "--max-time", "30", "-X", method]
-    if data is not None:
-        cmd2 += ["--data", data]
-    cmd2.append(url)
-    r2 = run(cmd2, timeout=60)
+        data = guard_data(data)
+
+    def build(header_flags: list[str]) -> list[str]:
+        cmd = [
+            "curl",
+            "-sS",
+            "-L",
+            "--proto",
+            "=http,https",
+            "--proto-redir",
+            "=http,https",
+            "--max-time",
+            "30",
+            "-X",
+            method,
+            *header_flags,
+        ]
+        if data is not None:
+            # --data-raw does not treat a leading @ as a local filename.
+            cmd += ["--data-raw", data]
+        cmd += ["--", url]
+        return cmd
+
+    # First request mirrors the historical -D - call; the parsed result is the -i call.
+    run(build(["-D", "-"]), timeout=60)
+    r2 = run(build(["-i"]), timeout=60)
     text = r2["stdout"]
     flags = extract_flags(text)
     return {"url": url, "method": method, **r2, "flags_found": flags}
@@ -130,15 +365,14 @@ def load_paths() -> list[str]:
 
 def web_hunt(url: str) -> dict[str, Any]:
     """Aggressive CTF web pass: paths + simple injection smoke tests on forms."""
+    url = guard_url(url)
     try:
-        import requests
         from bs4 import BeautifulSoup
+
+        session = guarded_session()
     except ImportError:
         return {"error": "requests/bs4 missing", "fallback": curl_fetch(url)}
 
-    session = requests.Session()
-    session.headers["User-Agent"] = "CypherFlag/1.0"
-    session.verify = False
     out: dict[str, Any] = {"url": url, "hits": [], "flags_found": [], "form_probes": []}
     flags: list[str] = []
 
@@ -148,8 +382,14 @@ def web_hunt(url: str) -> dict[str, Any]:
                 flags.append(f)
                 out["hits"].append({"where": label, "flag": f})
 
+    def fetch(method: str, req_url: str, **kwargs: Any) -> Any:
+        resp, fell_back = request_http(session, method, req_url, **kwargs)
+        if fell_back:
+            out["tls_verify_fallback"] = True
+        return resp
+
     try:
-        base_resp = session.get(url, timeout=20, allow_redirects=True)
+        base_resp = fetch("GET", url, timeout=20, allow_redirects=True)
     except Exception as e:  # noqa: BLE001
         return {"url": url, "error": str(e)}
 
@@ -160,7 +400,7 @@ def web_hunt(url: str) -> dict[str, Any]:
 
     for path in load_paths():
         try:
-            r = session.get(base + path, timeout=8, allow_redirects=True)
+            r = fetch("GET", base + path, timeout=8, allow_redirects=True)
         except Exception:  # noqa: BLE001
             continue
         interesting = r.status_code in (200, 301, 302, 401, 403) or bool(
@@ -179,7 +419,7 @@ def web_hunt(url: str) -> dict[str, Any]:
             note_flags(r.text, path)
 
     # form smoke: SSTI / SQLi / cmd lightly
-    soup = BeautifulSoup(base_resp.text, "lxml")
+    soup = BeautifulSoup(base_resp.text, "html.parser")
     probes = [
         ("ssti", "{{7*7}}"),
         ("ssti2", "${7*7}"),
@@ -195,6 +435,11 @@ def web_hunt(url: str) -> dict[str, Any]:
     ]
     for form in soup.find_all("form")[:5]:
         action = urljoin(str(base_resp.url), form.get("action") or "")
+        try:
+            guard_url(action)
+        except ValueError as exc:
+            out["form_probes"].append({"action": action, "error": str(exc)})
+            continue
         method = (form.get("method") or "get").lower()
         inputs = [
             i
@@ -207,9 +452,9 @@ def web_hunt(url: str) -> dict[str, Any]:
             data = {i.get("name"): payload for i in inputs}
             try:
                 if method == "post":
-                    r = session.post(action, data=data, timeout=10)
+                    r = fetch("POST", action, data=data, timeout=10)
                 else:
-                    r = session.get(action, params=data, timeout=10)
+                    r = fetch("GET", action, params=data, timeout=10)
             except Exception as e:  # noqa: BLE001
                 out["form_probes"].append({"action": action, "kind": kind, "error": str(e)})
                 continue
@@ -227,11 +472,17 @@ def web_hunt(url: str) -> dict[str, Any]:
     # Real scanners (ffuf / nuclei) — skip silently if not installed
     out["scanners"] = {}
     fuzz_url = base.rstrip("/") + "/FUZZ"
-    out["scanners"]["ffuf"] = ffuf_scan(fuzz_url, quick=True)
+    try:
+        out["scanners"]["ffuf"] = ffuf_scan(fuzz_url, quick=True)
+    except ValueError as exc:
+        out["scanners"]["ffuf"] = {"error": str(exc)}
     for f in out["scanners"]["ffuf"].get("flags_found") or []:
         if f not in flags:
             flags.append(f)
-    out["scanners"]["nuclei"] = nuclei_scan(base, quick=True)
+    try:
+        out["scanners"]["nuclei"] = nuclei_scan(base, quick=True)
+    except ValueError as exc:
+        out["scanners"]["nuclei"] = {"error": str(exc)}
     for f in out["scanners"]["nuclei"].get("flags_found") or []:
         if f not in flags:
             flags.append(f)
@@ -248,9 +499,15 @@ def have(cmd: str) -> bool:
 
 def ffuf_scan(url_with_fuzz: str, wordlist: str | None = None, quick: bool = True) -> dict[str, Any]:
     """Directory/path fuzz with ffuf. URL must contain FUZZ."""
+    url_with_fuzz = guard_url(url_with_fuzz)
+    if "FUZZ" not in url_with_fuzz:
+        raise ValueError("ffuf url must contain FUZZ")
+    if wordlist is not None:
+        wl = guard_wordlist(wordlist)
+    else:
+        wl = str(Path(__file__).resolve().parent / "wordlists" / "paths.txt")
     if not have("ffuf"):
         return {"error": "ffuf not installed", "fix": "bash scripts/install-mac-scanners.sh"}
-    wl = wordlist or str(Path(__file__).resolve().parent / "wordlists" / "paths.txt")
     cmd = [
         "ffuf",
         "-u",
@@ -298,6 +555,9 @@ def ffuf_scan(url_with_fuzz: str, wordlist: str | None = None, quick: bool = Tru
 
 def sqlmap_scan(url: str, data: str | None = None, quick: bool = True) -> dict[str, Any]:
     """sqlmap against a URL (authorized CTF only). batch + limited risk."""
+    url = guard_url(url)
+    if data is not None:
+        data = guard_data(data)
     if not have("sqlmap"):
         return {"error": "sqlmap not installed", "fix": "bash scripts/install-mac-scanners.sh"}
     cmd = [
@@ -336,6 +596,7 @@ def sqlmap_scan(url: str, data: str | None = None, quick: bool = True) -> dict[s
 
 def nuclei_scan(url: str, quick: bool = True) -> dict[str, Any]:
     """nuclei exposures/misconfig (rate-limited)."""
+    url = guard_url(url)
     if not have("nuclei"):
         return {"error": "nuclei not installed", "fix": "bash scripts/install-mac-scanners.sh"}
     cmd = [
@@ -524,7 +785,10 @@ def autosolve(
         f.write(f"\n## autosolve\nflags={flags}\ntargets={targets}\n")
     if flags:
         for fl in flags:
-            save_flag(meta["slug"], fl, root=root)
+            try:
+                save_flag(meta["slug"], fl, root=root)
+            except ValueError:
+                continue
     result["next"] = (
         "If no flag: load ctf-triage skill and continue manual exploit loop."
         if not flags
@@ -592,23 +856,31 @@ def peel_encodings(data: str, rounds: int = 8) -> dict[str, Any]:
 
 
 def whois_lookup(target: str) -> dict[str, Any]:
+    target = guard_host(target)
     r = run(["whois", target], timeout=60)
     return {"target": target, **r}
 
 
 
 def http_fingerprint(url: str) -> dict[str, Any]:
+    url = guard_url(url)
     try:
-        import requests
         from bs4 import BeautifulSoup
+
+        session = guarded_session()
     except ImportError:
         return curl_fetch(url)
 
     out: dict[str, Any] = {"url": url, "paths": {}}
-    session = requests.Session()
-    session.headers["User-Agent"] = "CypherFlag/1.0"
+
+    def fetch(method: str, req_url: str, **kwargs: Any) -> Any:
+        resp, fell_back = request_http(session, method, req_url, **kwargs)
+        if fell_back:
+            out["tls_verify_fallback"] = True
+        return resp
+
     try:
-        resp = session.get(url, timeout=20, allow_redirects=True, verify=False)
+        resp = fetch("GET", url, timeout=20, allow_redirects=True)
     except Exception as e:  # noqa: BLE001
         return {"url": url, "error": str(e)}
 
@@ -617,7 +889,7 @@ def http_fingerprint(url: str) -> dict[str, Any]:
     out["headers"] = dict(resp.headers)
     out["len"] = len(resp.content)
     out["flags_found"] = extract_flags(resp.text)
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
     out["title"] = (soup.title.string.strip() if soup.title and soup.title.string else "")
     out["forms"] = []
     for form in soup.find_all("form"):
@@ -657,7 +929,7 @@ def http_fingerprint(url: str) -> dict[str, Any]:
         "/graphql",
     ):
         try:
-            r = session.get(base + path, timeout=10, allow_redirects=False, verify=False)
+            r = fetch("GET", base + path, timeout=10, allow_redirects=False)
             if r.status_code < 500:
                 out["paths"][path] = {
                     "status": r.status_code,
@@ -673,12 +945,16 @@ def http_fingerprint(url: str) -> dict[str, Any]:
 def recon(target: str) -> dict[str, Any]:
     """Workshop-aligned recon: dig + nmap + http if looks like host."""
     result: dict[str, Any] = {"target": target}
-    host = target
     if "://" in target:
-        host = urlparse(target).hostname or target
-        result["http"] = http_fingerprint(target if "://" in target else f"http://{target}")
+        target = guard_url(target)
+        result["target"] = target
+        host = urlparse(target).hostname or ""
+        if not host:
+            raise ValueError("url is missing a host")
+        result["http"] = http_fingerprint(target)
     else:
-        # try http anyway
+        host = guard_host(target)
+        result["target"] = host
         result["http_http"] = http_fingerprint(f"http://{host}")
         result["http_https"] = http_fingerprint(f"https://{host}")
 
@@ -691,6 +967,8 @@ def recon(target: str) -> dict[str, Any]:
 
 
 def save_flag(challenge: str, flag: str, root: Path | None = None) -> None:
+    challenge = guard_line(challenge, "challenge")
+    flag = guard_line(flag, "flag")
     root = root or Path(__file__).resolve().parents[1]
     ledger = root / "flags" / "FOUND.md"
     ledger.parent.mkdir(parents=True, exist_ok=True)
@@ -704,13 +982,9 @@ def save_flag(challenge: str, flag: str, root: Path | None = None) -> None:
 
 
 def main() -> None:
-    # silence insecure warn for CTF labs
-    try:
-        import urllib3
-
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    except Exception:  # noqa: BLE001
-        pass
+    load_dotenv()
+    if not tls_verify_enabled():
+        _silence_insecure_warning()
 
     ap = argparse.ArgumentParser(prog="cypherflag")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -783,57 +1057,65 @@ def main() -> None:
     args = ap.parse_args()
     out: Any
 
+    try:
+        out = _dispatch(args)
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        raise SystemExit(2) from exc
+    if out is None:
+        return
+    print(json.dumps(out, indent=2, default=str))
+
+
+def _dispatch(args: argparse.Namespace) -> Any:
     if args.cmd == "dig":
-        out = dig_lookup(args.target)
-    elif args.cmd == "nmap":
-        out = nmap_scan(args.target, full=args.full, quick=args.quick)
-    elif args.cmd == "curl":
-        out = curl_fetch(args.url, method=args.method, data=args.data)
-    elif args.cmd == "whois":
-        out = whois_lookup(args.target)
-    elif args.cmd == "http":
-        out = http_fingerprint(args.url)
-    elif args.cmd == "recon":
-        out = recon(args.target)
-    elif args.cmd == "web-hunt":
-        out = web_hunt(args.url)
-    elif args.cmd == "ffuf":
-        out = ffuf_scan(args.url, wordlist=args.wordlist, quick=not args.full)
-    elif args.cmd == "sqlmap":
-        out = sqlmap_scan(args.url, data=args.data, quick=not args.full)
-    elif args.cmd == "nuclei":
-        out = nuclei_scan(args.url, quick=not args.full)
-    elif args.cmd == "scanners":
-        out = scanners_available()
-    elif args.cmd == "peel":
+        return dig_lookup(args.target)
+    if args.cmd == "nmap":
+        return nmap_scan(args.target, full=args.full, quick=args.quick)
+    if args.cmd == "curl":
+        return curl_fetch(args.url, method=args.method, data=args.data)
+    if args.cmd == "whois":
+        return whois_lookup(args.target)
+    if args.cmd == "http":
+        return http_fingerprint(args.url)
+    if args.cmd == "recon":
+        return recon(args.target)
+    if args.cmd == "web-hunt":
+        return web_hunt(args.url)
+    if args.cmd == "ffuf":
+        return ffuf_scan(args.url, wordlist=args.wordlist, quick=not args.full)
+    if args.cmd == "sqlmap":
+        return sqlmap_scan(args.url, data=args.data, quick=not args.full)
+    if args.cmd == "nuclei":
+        return nuclei_scan(args.url, quick=not args.full)
+    if args.cmd == "scanners":
+        return scanners_available()
+    if args.cmd == "peel":
         raw = args.data
         if args.file:
             raw = Path(args.file).read_text(errors="ignore")
         if raw is None:
             raw = sys.stdin.read()
-        out = peel_encodings(raw)
-    elif args.cmd == "extract-targets":
+        return peel_encodings(raw)
+    if args.cmd == "extract-targets":
         text = sys.stdin.read() if args.path == "-" else Path(args.path).read_text(errors="ignore")
-        out = extract_targets(text)
-    elif args.cmd == "autosolve":
-        out = autosolve(
+        return extract_targets(text)
+    if args.cmd == "autosolve":
+        return autosolve(
             slug=args.slug,
             target=args.target,
             text=args.text,
             text_file=args.text_file,
         )
-    elif args.cmd == "extract-flags":
+    if args.cmd == "extract-flags":
         text = sys.stdin.read() if args.path == "-" else Path(args.path).read_text(errors="ignore")
-        out = {"flags": extract_flags(text)}
-    elif args.cmd == "save-flag":
+        return {"flags": extract_flags(text)}
+    if args.cmd == "save-flag":
         save_flag(args.challenge, args.flag)
-        return
-    elif args.cmd == "new-challenge":
-        out = scaffold_challenge(args.slug, title=args.title)
-    else:
-        ap.error("unknown")
-
-    print(json.dumps(out, indent=2, default=str))
+        return None
+    if args.cmd == "new-challenge":
+        return scaffold_challenge(args.slug, title=args.title)
+    raise ValueError(f"unknown command: {args.cmd}")
 
 
 if __name__ == "__main__":

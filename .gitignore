@@ -19,3 +19,19 @@ challenges/*/
 .env
 .env.*
 !.env.example
+
+# Python tooling and local editors
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+dist/
+build/
+*.egg-info/
+.idea/
+.vscode/
+*.swp
+*~
+Thumbs.db

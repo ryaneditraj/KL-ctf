@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in the harness failed on an authorized target or during setup.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Commands only. Do not paste live flags, tokens, or target data you cannot share.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 15 / Ubuntu 24.04, Python 3.12, Cursor
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Redact hostnames and flags first.
+      render: shell

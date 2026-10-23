@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KL-ctf — agentic capture-the-flag harness for Cursor</title>
+  <meta name="description" content="KL-ctf (CypherFlag) is an open-source agentic capture-the-flag harness. A Cursor agent triages a challenge, runs dig, nmap, and curl, and keeps notes until a flag is ready to submit. By Ryan Editraj.">
+  <meta name="keywords" content="KL-ctf, CypherFlag, agentic AI, capture the flag, CTF harness, Cursor agent, cybersecurity training, authorized security testing, dig, nmap, reconnaissance">
+  <meta name="author" content="Ryan Editraj">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#08110d">
+  <link rel="canonical" href="https://ryaneditraj.github.io/KL-ctf/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="KL-ctf">
+  <meta property="og:title" content="KL-ctf — agentic capture-the-flag harness">
+  <meta property="og:description" content="Paste a CTF challenge into Cursor. This harness triages it, runs real recon tools, and keeps a written trail until there is a flag to submit.">
+  <meta property="og:url" content="https://ryaneditraj.github.io/KL-ctf/">
+  <meta property="og:image" content="https://raw.githubusercontent.com/ryaneditraj/KL-ctf/main/docs/screenshots/docs-home.png">
+  <meta property="og:image:alt" content="KL-ctf docs homepage: an agentic capture-the-flag harness">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="KL-ctf — agentic capture-the-flag harness">
+  <meta name="twitter:description" content="An open-source Cursor harness for authorized capture-the-flag labs. By Ryan Editraj.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/ryaneditraj/KL-ctf/main/docs/screenshots/terminal-demo.png">
+  <meta name="twitter:image:alt" content="Terminal running the KL-ctf CypherFlag CLI">
+  <link rel="stylesheet" href="site.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; font-src 'self'; script-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareSourceCode",
+        "name": "KL-ctf",
+        "alternateName": "CypherFlag",
+        "description": "Agentic capture-the-flag harness for Cursor. Triages a challenge, runs dig, nmap, and curl, and keeps notes until a flag is ready to submit.",
+        "codeRepository": "https://github.com/ryaneditraj/KL-ctf",
+        "url": "https://ryaneditraj.github.io/KL-ctf/",
+        "license": "https://opensource.org/licenses/MIT",
+        "programmingLanguage": ["Python", "Bash"],
+        "runtimePlatform": "Cursor Agent",
+        "author": {
+          "@type": "Person",
+          "name": "Ryan Editraj",
+          "url": "https://github.com/ryaneditraj",
+          "sameAs": [
+            "https://github.com/ryaneditraj",
+            "https://www.instagram.com/ryaneditraj/"
+          ]
+        },
+        "keywords": "agentic AI, capture the flag, CTF harness, cybersecurity education, reconnaissance"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is KL-ctf?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "KL-ctf, also called CypherFlag, is an open-source agentic capture-the-flag harness. It is the tool and memory layer around a Cursor agent for authorized CTF labs and security education."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is KL-ctf just a chatbot prompt?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. A chatbot answers once. KL-ctf gives the agent tools, category skills, a notes folder, and a loop that continues until a flag is found or the operator stops it."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which tools does the harness run?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The workshop tools are dig, nmap, and curl, plus whois. ffuf, sqlmap, and nuclei run when they are installed. The scanners command shows what the machine actually has."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it safe to point KL-ctf at any website?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Use it on a CTF you joined, a lab you own, or a host inside a written scope. The CLI refuses non-HTTP schemes and cloud metadata addresses, and it verifies TLS by default."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Who maintains KL-ctf?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ryan Editraj, an AI builder and tech creator. The source is github.com/ryaneditraj/KL-ctf and the Instagram account is instagram.com/ryaneditraj."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="https://github.com/ryaneditraj/KL-ctf">KL-ctf</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#demo">Demo</a>
+        <a href="#start">Quick start</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/ryaneditraj/KL-ctf">GitHub</a>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero">
+        <p class="eyebrow">CypherFlag · agentic CTF harness</p>
+        <h1>The model thinks. <em>The harness</em> hunts the flag.</h1>
+        <p class="lede">Paste a capture-the-flag challenge into Cursor. KL-ctf triages the artifact, runs dig, nmap, and curl, and keeps a written trail until there is a flag to submit. Authorized labs only.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/ryaneditraj/KL-ctf">View the source</a>
+          <a class="btn ghost" href="#start">Install in two minutes</a>
+        </div>
+      </section>
+      <figure class="shot" id="demo">
+        <div class="chrome" aria-hidden="true"><i></i><i></i><i></i></div>
+        <img src="screenshots/terminal-demo.png" width="1400" height="900" alt="Terminal running python3 tools/cypherflag.py scanners, peel, and a blocked metadata URL">
+        <figcaption>Real local session, 23 October 2026. Scanner check, a peeled demo flag, and a refused cloud-metadata URL.</figcaption>
+      </figure>
+      <section>
+        <h2>What you get</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Triage before guessing</h3>
+            <p>The agent classifies the file, URL, or ciphertext, then loads one category skill instead of a generic prompt.</p>
+          </article>
+          <article class="card">
+            <h3>Real recon tools</h3>
+            <p>dig, nmap, curl, and whois share one CLI. ffuf, sqlmap, and nuclei join in when they are installed.</p>
+          </article>
+          <article class="card">
+            <h3>A flag you can submit</h3>
+            <p>Notes land in <code>notes/</code>. A found flag is printed as <code>FLAG:</code> and appended to the ledger.</p>
+          </article>
+        </div>
+      </section>
+      <section class="panel" id="start">
+        <h2>Quick start</h2>
+        <p>Python 3.10 or newer. On Windows, use WSL or Git Bash for the shell scripts.</p>
+        <pre><code>git clone https://github.com/ryaneditraj/KL-ctf.git
+cd KL-ctf
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+bash scripts/solve.sh doctor
+python3 tools/cypherflag.py scanners</code></pre>
+      </section>
+      <section class="faq" id="faq">
+        <h2>Questions people ask</h2>
+        <details open>
+          <summary>What is KL-ctf?</summary>
+          <p>KL-ctf, also called CypherFlag, is an open-source agentic capture-the-flag harness by Ryan Editraj. It is the tool layer around a Cursor agent for authorized CTF labs and security education.</p>
+        </details>
+        <details>
+          <summary>Is this just a chatbot prompt?</summary>
+          <p>No. A chatbot answers once. This harness gives the agent tools, category skills, a notes folder, and a loop that continues until a flag is found or you stop it.</p>
+        </details>
+        <details>
+          <summary>Which tools does it run?</summary>
+          <p>The workshop set is dig, nmap, and curl, plus whois. ffuf, sqlmap, and nuclei run when they are installed. <code>python3 tools/cypherflag.py scanners</code> shows what this machine has.</p>
+        </details>
+        <details>
+          <summary>Can I point it at any website?</summary>
+          <p>No. Use a CTF you joined, a lab you own, or a host inside a written scope. The CLI refuses non-HTTP schemes and cloud metadata addresses, and it verifies TLS by default.</p>
+        </details>
+        <details>
+          <summary>Who maintains it?</summary>
+          <p><a href="https://github.com/ryaneditraj">Ryan Editraj</a>, an AI builder and tech creator. Instagram: <a href="https://www.instagram.com/ryaneditraj/">@ryaneditraj</a>.</p>
+        </details>
+      </section>
+      <section class="author">
+        <div>
+          <p class="eyebrow">Author</p>
+          <h2>Ryan Editraj</h2>
+          <p>AI builder and tech creator, with about 295K Instagram followers.</p>
+        </div>
+        <div class="actions">
+          <a class="btn ghost" href="https://github.com/ryaneditraj">GitHub</a>
+          <a class="btn ghost" href="https://www.instagram.com/ryaneditraj/">Instagram</a>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p>MIT License · Copyright 2026 Ryan Editraj · Authorized capture-the-flag use only.</p>
+    </footer>
+  </div>
+</body>
+</html>

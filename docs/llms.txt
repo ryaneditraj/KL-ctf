@@ -1,0 +1,29 @@
+# KL-ctf
+
+> KL-ctf (CypherFlag) is an open-source agentic capture-the-flag harness by Ryan Editraj. A Cursor agent triages a challenge, runs dig, nmap, and curl, and keeps notes until a flag is ready to submit. It is for authorized CTF labs and security education.
+
+KL-ctf is the harness, not the model. Cursor Agent is the runtime (think, call a tool, read the result, repeat). The repository holds the CLI (`tools/cypherflag.py`), category skills, operator docs, and the flag ledger.
+
+Use it only on a CTF you joined, a lab you own, or a host inside a written scope. The CLI refuses non-HTTP URL schemes and cloud metadata addresses, and it verifies TLS certificates by default.
+
+## Docs
+
+- [README](https://github.com/ryaneditraj/KL-ctf/blob/main/README.md): Product overview, install, usage, FAQ, and author
+- [Docs homepage](https://ryaneditraj.github.io/KL-ctf/): Short public page for the same project
+- [Architecture](https://github.com/ryaneditraj/KL-ctf/blob/main/ARCHITECTURE.md): How the nine harness parts map onto this repo
+- [Agent contract](https://github.com/ryaneditraj/KL-ctf/blob/main/AGENTS.md): What the agent must do on a challenge
+- [Operator guide](https://github.com/ryaneditraj/KL-ctf/blob/main/AALIYA.md): Non-technical match-day steps
+- [Security](https://github.com/ryaneditraj/KL-ctf/blob/main/SECURITY.md): Reporting, the 2026-10-23 audit, and what is intentionally in scope
+- [Contributing](https://github.com/ryaneditraj/KL-ctf/blob/main/CONTRIBUTING.md): Local setup and pull request rules
+- [Code of conduct](https://github.com/ryaneditraj/KL-ctf/blob/main/CODE_OF_CONDUCT.md): Contributor Covenant 2.1
+
+## Optional
+
+- [Explain script](https://github.com/ryaneditraj/KL-ctf/blob/main/EXPLAIN.md): Short spoken description of the agentic design
+- [Documentation index](https://github.com/ryaneditraj/KL-ctf/blob/main/docs/INDEX.md): Every doc in the repo
+- [License](https://github.com/ryaneditraj/KL-ctf/blob/main/LICENSE): MIT, copyright 2026 Ryan Editraj
+
+## Author
+
+- GitHub: https://github.com/ryaneditraj
+- Instagram: https://www.instagram.com/ryaneditraj/

@@ -1,0 +1,108 @@
+KL-ctf local HTTP fixture on 127.0.0.1:8765
+
+$ python3 tools/cypherflag.py http http://127.0.0.1:8765/
+
+{
+  "url": "http://127.0.0.1:8765/",
+  "paths": {
+    "/robots.txt": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/sitemap.xml": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/.git/HEAD": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/flag": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/flag.txt": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/.env": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/admin": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/login": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/api": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/api/v1": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/console": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/debug": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/swagger": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    },
+    "/graphql": {
+      "status": 404,
+      "len": 0,
+      "flags": [],
+      "snippet": ""
+    }
+  },
+  "status": 200,
+  "final_url": "http://127.0.0.1:8765/",
+  "headers": {
+    "Server": "BaseHTTP/0.6 Python/3.12.3",
+    "Date": "Fri, 23 Oct 2026 03:30:41 GMT",
+    "Content-Type": "text/html",
+    "Content-Length": "94"
+  },
+  "len": 94,
+  "flags_found": [
+    "KLCTF{local_demo_not_a_real_flag}"
+  ],
+  "title": "Fixture",
+  "forms": [],
+  "links": []
+}
